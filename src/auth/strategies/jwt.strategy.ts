@@ -22,7 +22,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     const user = await this.usersService.findOneById(payload.sub);
     if (!user) throw new UnauthorizedException();
 
-    // Lo que retornes aquí se inyectará en los controladores dentro de `req.user`
+    // Lo que se retorne aquí se inyectará en los controladores dentro de `req.user`
     return { userId: payload.sub, username: payload.username, role: payload.role };
   }
 }

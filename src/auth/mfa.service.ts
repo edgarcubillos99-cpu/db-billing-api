@@ -14,7 +14,7 @@ export class MfaService {
   public async generateMfaSecret(user: User) {
     const secret = generateSecret();
 
-    // El nombre de tu app (se puede leer de una variable de entorno)
+    // El nombre de la app (se puede leer de una variable de entorno)
     const appName = this.configService.get<string>('APP_NAME', 'DB Billing API');
 
     // Genera la URI estándar para aplicaciones de autenticación

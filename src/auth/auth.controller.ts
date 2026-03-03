@@ -85,12 +85,12 @@ export class AuthController {
 
     return {
       message: 'Escanea el código QR con tu aplicación de autenticación',
-      qrCodeUrl // Esto es un string base64 que puedes poner en un tag <img> en tu frontend
+      qrCodeUrl // Esto es un string base64 que puedes poner en un tag <img> en el frontend
     };
   }
 
   @ApiBearerAuth()
-  @UseGuards(AuthGuard('jwt')) // En un flujo real, aquí usarías un JWT 'parcial' o temporal
+  @UseGuards(AuthGuard('jwt'))
   @Post('mfa/verify')
   @ApiOperation({ summary: 'Verificar código MFA' })
   async verifyMfa(@Req() req: any, @Body() mfaDto: MfaDto) {
@@ -105,10 +105,9 @@ export class AuthController {
       throw new UnauthorizedException('Código MFA inválido');
     }
 
-    // Si es válido, devuelves un nuevo JWT o simplemente un mensaje de éxito
+    // Si es válido, devuelve un nuevo JWT o simplemente un mensaje de éxito
     return {
       message: 'MFA verificado correctamente',
-      // access_token: this.authService.login(user).access_token // (Opcional) Retornar un token renovado
     };
   }
 }

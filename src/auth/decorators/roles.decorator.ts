@@ -1,3 +1,4 @@
+// El decorador @Roles es usado para definir los roles permitidos para una ruta
 import { SetMetadata } from '@nestjs/common';
 import { UserRole } from '../../users/entities/user.entity';
 

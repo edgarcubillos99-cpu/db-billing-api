@@ -49,7 +49,6 @@ export class AuthService {
 
   /**
    * 3. Buscar usuario por ID
-   * Un método auxiliar muy útil para cuando necesitamos buscar al usuario
    * durante el segundo paso del MFA (verifyMfa) en el AuthController.
    */
   async findById(userId: string) {
