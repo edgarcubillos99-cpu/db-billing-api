@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, UnauthorizedException, UseGuards, Req, Get } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
@@ -7,6 +7,8 @@ import { AuthGuard } from '@nestjs/passport';
 import { RolesGuard } from './guards/roles.guard';
 import { UserRole } from '../users/entities/user.entity';
 import { Roles } from './decorators/roles.decorator';
+import { MfaDto } from './dto/mfa.dto';
+import { MfaService } from './mfa.service';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -14,6 +16,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly usersService: UsersService,
+    private readonly mfaService: MfaService,
   ) {}
 
   @ApiBearerAuth()
@@ -62,4 +65,51 @@ export class AuthController {
     // 3. Si no tiene MFA, generamos y devolvemos el token JWT directamente
     return this.authService.login(user);
   }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
+  @Get('mfa/generate')
+  @ApiOperation({ summary: 'Generar código QR para activar MFA' })
+  async generateMfaSecret(@Req() req: any) {
+    // 1. Buscamos al usuario en base a su token
+    const user = await this.usersService.findOneById(req.user.userId);
+    if (!user) {
+      throw new UnauthorizedException('Usuario no encontrado');
+    }
+
+    // 2. Generamos el secreto y el QR
+    const { secret, qrCodeUrl } = await this.mfaService.generateMfaSecret(user);
+    
+    // 3. Guardamos el secreto en la base de datos (y activamos el MFA)
+    await this.usersService.enableMfa(user.id, secret);
+
+    return {
+      message: 'Escanea el código QR con tu aplicación de autenticación',
+      qrCodeUrl // Esto es un string base64 que puedes poner en un tag <img> en tu frontend
+    };
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt')) // En un flujo real, aquí usarías un JWT 'parcial' o temporal
+  @Post('mfa/verify')
+  @ApiOperation({ summary: 'Verificar código MFA' })
+  async verifyMfa(@Req() req: any, @Body() mfaDto: MfaDto) {
+    const user = await this.usersService.findOneById(req.user.userId);
+    if (!user) {
+      throw new UnauthorizedException('Usuario no encontrado');
+    }
+
+    const isValid = this.mfaService.isMfaCodeValid(mfaDto.mfaCode, user);
+    
+    if (!isValid) {
+      throw new UnauthorizedException('Código MFA inválido');
+    }
+
+    // Si es válido, devuelves un nuevo JWT o simplemente un mensaje de éxito
+    return {
+      message: 'MFA verificado correctamente',
+      // access_token: this.authService.login(user).access_token // (Opcional) Retornar un token renovado
+    };
+  }
 }
+

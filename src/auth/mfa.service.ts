@@ -1,31 +1,44 @@
-// src/auth/mfa.service.ts
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { generateSecret, generateURI, verifySync } from 'otplib';
-import { toDataURL } from 'qrcode';
+import * as QRCode from 'qrcode';
 import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class MfaService {
-  
-  // 1. Generar el secreto para un usuario que quiere activar MFA
+  constructor(private readonly configService: ConfigService) {}
+
+  /**
+   * Genera un nuevo secreto MFA y su correspondiente código QR.
+   */
   public async generateMfaSecret(user: User) {
     const secret = generateSecret();
+
+    // El nombre de tu app (se puede leer de una variable de entorno)
+    const appName = this.configService.get<string>('APP_NAME', 'DB Billing API');
+
+    // Genera la URI estándar para aplicaciones de autenticación
     const otpauthUrl = generateURI({
-      issuer: 'DB Billing API',
+      issuer: appName,
       label: user.username,
       secret,
     });
 
+    // Convierte esa URI en una imagen Data URL (base64) que el Frontend puede mostrar
+    const qrCodeUrl = await QRCode.toDataURL(otpauthUrl);
+
     return {
       secret,
-      qrCodeUrl: await toDataURL(otpauthUrl),
+      qrCodeUrl,
     };
   }
 
-  // 2. Validar el código ingresado por el usuario
+  /**
+   * Valida un código de 6 dígitos ingresado por el usuario.
+   */
   public isMfaCodeValid(mfaCode: string, user: User): boolean {
     if (!user.mfaSecret) return false;
-    
+
     const result = verifySync({
       token: mfaCode,
       secret: user.mfaSecret,
