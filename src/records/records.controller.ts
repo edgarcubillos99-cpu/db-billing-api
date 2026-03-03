@@ -1,10 +1,13 @@
-import { Controller, Get, Post, Body, Param, Query, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, UsePipes, ValidationPipe, UseGuards } from '@nestjs/common';
 import { RecordsService } from './records.service';
 import { GetRecordsFilterDto } from './dto/get-records-filter.dto';
-import { ApiTags, ApiOperation, ApiResponse, ApiQuery, ApiParam, ApiBody } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiQuery, ApiParam, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { AdvancedSearchDto } from './dto/advanced-search.dto';
+import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('Records')
+@ApiBearerAuth() // Le dice a Swagger que estos endpoints requieren un token JWT
+@UseGuards(AuthGuard('jwt')) // Protege TODAS las rutas de este controlador
 @Controller('records')
 export class RecordsController {
   constructor(private readonly recordsService: RecordsService) {}
@@ -30,17 +33,14 @@ export class RecordsController {
 
   @Get('stats/amount-summary')
   @ApiOperation({ summary: 'Obtener resumen de montos agrupados por tipo' })
-  // Añadimos ejemplos a los query params sueltos
   @ApiQuery({ name: 'date_from', required: false, example: '2026-01-01', description: 'Fecha de inicio (YYYY-MM-DD)' })
   @ApiQuery({ name: 'date_to', required: false, example: '2026-01-31', description: 'Fecha de fin (YYYY-MM-DD)' })
   getAmountSummary(@Query('date_from') date_from?: string, @Query('date_to') date_to?: string) {
     return this.recordsService.getAmountSummary(date_from, date_to);
   }
-  
 
   @Post('search')
   @ApiOperation({ summary: 'Búsqueda avanzada usando payload JSON (Ideal para múltiples IN, OR)' })
-  // Aquí usamos @ApiBody para mostrar múltiples ejemplos seleccionables en un menú desplegable en Swagger
   @ApiBody({
     type: AdvancedSearchDto,
     examples: {
@@ -54,13 +54,12 @@ export class RecordsController {
       }
     }
   })
-  advancedSearch(@Body() searchPayload: AdvancedSearchDto) { // <-- Cambiamos el 'any' por nuestro DTO
+  advancedSearch(@Body() searchPayload: AdvancedSearchDto) { 
     return this.recordsService.advancedSearch(searchPayload);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Obtener un registro por ID' })
-  // Añadimos un ejemplo al parámetro de la ruta
   @ApiParam({ name: 'id', example: '9847583', description: 'ID único del registro' })
   findOne(@Param('id') id: string) {
     return this.recordsService.findOne(id);
