@@ -1,8 +1,12 @@
-import { Controller, Post, Body, UnauthorizedException } from '@nestjs/common';
+import { Controller, Post, Body, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { LoginDto } from './dto/login.dto';
+import { AuthGuard } from '@nestjs/passport';
+import { RolesGuard } from './guards/roles.guard';
+import { UserRole } from '../users/entities/user.entity';
+import { Roles } from './decorators/roles.decorator';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -12,15 +16,18 @@ export class AuthController {
     private readonly usersService: UsersService,
   ) {}
 
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Post('register')
-  @ApiOperation({ summary: 'Registrar un nuevo usuario' })
+  @ApiOperation({ summary: 'Registrar un nuevo usuario (Requiere token)' })
   @ApiResponse({ status: 201, description: 'Usuario creado exitosamente.' })
   @ApiResponse({ status: 409, description: 'El nombre de usuario ya existe.' })
+  @ApiResponse({ status: 401, description: 'No autorizado.' })
   async register(@Body() authCredentialsDto: LoginDto) {
     const { username, password } = authCredentialsDto;
     
-    // Llamamos al UsersService para crear al usuario en la base de datos
-    const newUser = await this.usersService.create(username, password);
+    // Al no pasar un tercer parámetro, los usuarios creados aquí serán Role.USER por defecto
+    const newUser = await this.usersService.create(username, password, UserRole.USER);
     
     return {
       message: 'Usuario creado exitosamente',

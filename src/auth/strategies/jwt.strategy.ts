@@ -5,9 +5,7 @@ import { UsersService } from '../../users/users.service';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(
-    // private readonly usersService: UsersService // <-- Para validar que el usuario aún existe
-  ) {
+  constructor(private readonly usersService: UsersService) {
     super({
       // Extrae el token del header: Authorization: Bearer <token>
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -18,13 +16,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   // Este método se ejecuta automáticamente si el token es válido y no ha expirado
   async validate(payload: any) {
-    // El "payload" es la información que guardaste al hacer el login (ej: el ID del usuario)
+    // El "payload" es la información que se guarda al hacer el login (ej: el ID del usuario)
     
-    // Opcional pero recomendado: Verificar en base de datos si el usuario sigue activo
-    // const user = await this.usersService.findOne(payload.sub);
-    // if (!user) throw new UnauthorizedException();
+    // Verificar en base de datos si el usuario sigue activo
+    const user = await this.usersService.findOneById(payload.sub);
+    if (!user) throw new UnauthorizedException();
 
     // Lo que retornes aquí se inyectará en los controladores dentro de `req.user`
-    return { userId: payload.sub, username: payload.username };
+    return { userId: payload.sub, username: payload.username, role: payload.role };
   }
 }
