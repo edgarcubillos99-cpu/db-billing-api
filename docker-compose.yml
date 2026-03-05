@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: db_billing_api_prod
+    restart: always
+    ports:
+      - "${PORT}:${PORT}"
+    # Le indicamos que lea las variables desde .env
+    env_file:
+      - .env
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
