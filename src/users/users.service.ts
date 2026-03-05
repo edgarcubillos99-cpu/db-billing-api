@@ -58,7 +58,7 @@ export class UsersService implements OnModuleInit{
       username,
       passwordHash,
       role,
-      isMfaEnabled: true, // Por defecto el MFA está encendido
+      isMfaEnabled: false,
     });
 
     return this.userRepository.save(newUser);
@@ -73,6 +73,19 @@ export class UsersService implements OnModuleInit{
 
     user.mfaSecret = secret;
     user.isMfaEnabled = true;
+    await this.userRepository.save(user);
+  }
+
+  async disableMfa(userId: string): Promise<void> {
+    const user = await this.findOneById(userId);
+    if (!user) {
+      throw new NotFoundException('Usuario no encontrado');
+    }
+
+    // Borramos el secreto anterior y apagamos la bandera
+    user.mfaSecret = undefined; 
+    user.isMfaEnabled = false;
+    
     await this.userRepository.save(user);
   }
 }

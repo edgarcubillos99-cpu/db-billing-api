@@ -9,6 +9,7 @@ import { UserRole } from '../users/entities/user.entity';
 import { Roles } from './decorators/roles.decorator';
 import { MfaDto } from './dto/mfa.dto';
 import { MfaService } from './mfa.service';
+import { ResetMfaDto } from './dto/reset-mfa.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -21,6 +22,7 @@ export class AuthController {
 
   @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'), RolesGuard)
+  @Roles(UserRole.ADMIN)
   @Post('register')
   @ApiOperation({ summary: 'Registrar un nuevo usuario (Requiere token)' })
   @ApiResponse({ status: 201, description: 'Usuario creado exitosamente.' })
@@ -67,7 +69,7 @@ export class AuthController {
   }
 
   @ApiBearerAuth()
-  @UseGuards(AuthGuard('jwt'))
+  @UseGuards(AuthGuard('jwt'), RolesGuard)
   @Get('mfa/generate')
   @ApiOperation({ summary: 'Generar código QR para activar MFA' })
   async generateMfaSecret(@Req() req: any) {
@@ -89,12 +91,11 @@ export class AuthController {
     };
   }
 
-  @ApiBearerAuth()
-  @UseGuards(AuthGuard('jwt'))
   @Post('mfa/verify')
   @ApiOperation({ summary: 'Verificar código MFA' })
-  async verifyMfa(@Req() req: any, @Body() mfaDto: MfaDto) {
-    const user = await this.usersService.findOneById(req.user.userId);
+  async verifyMfa(@Body() mfaDto: MfaDto) { // <-- Ya no pedimos @Req() req
+    // Usamos el userId que viene en el Body de la petición
+    const user = await this.usersService.findOneById(mfaDto.userId);
     if (!user) {
       throw new UnauthorizedException('Usuario no encontrado');
     }
@@ -105,9 +106,24 @@ export class AuthController {
       throw new UnauthorizedException('Código MFA inválido');
     }
 
-    // Si es válido, devuelve un nuevo JWT o simplemente un mensaje de éxito
-    return {
-      message: 'MFA verificado correctamente',
+    // Aquí le devolvemos el token definitivo para que por fin pueda entrar
+    return this.authService.login(user); 
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'), RolesGuard) // <-- 1. Valida el token
+  @Roles(UserRole.ADMIN)                   // <-- 2. Exige que sea ADMIN
+  @Post('mfa/reset-for-user')
+  @ApiOperation({ summary: 'Apagar el MFA de un usuario que perdió su celular (Solo ADMIN)' })
+  @ApiResponse({ status: 200, description: 'MFA reseteado con éxito.' })
+  @ApiResponse({ status: 403, description: 'No tienes permisos de Administrador.' })
+  async resetMfaForUser(@Body() resetMfaDto: ResetMfaDto) {
+    
+    await this.usersService.disableMfa(resetMfaDto.userId);
+    
+    return { 
+      message: 'MFA desactivado. El usuario ya puede iniciar sesión con su contraseña y generar un nuevo código QR.',
+      userIdReseteado: resetMfaDto.userId
     };
   }
 }

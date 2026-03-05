@@ -2,9 +2,20 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import helmet from 'helmet';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // Seguridad: Protege cabeceras HTTP
+  app.use(helmet());
+
+  // Seguridad: Habilita CORS
+  app.enableCors({
+    origin: process.env.FRONTEND_URL || '*', // En producción, cambia '*' por la URL de tu frontend
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true,
+  });
 
   // 1. Configuración global de validaciones (Pipes)
   app.useGlobalPipes(

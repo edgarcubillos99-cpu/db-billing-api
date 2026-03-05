@@ -1,7 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, Length } from 'class-validator';
+import { IsString, IsNotEmpty, Length, IsUUID } from 'class-validator';
 
 export class MfaDto {
+  @ApiProperty({ example: '1c571b5a-21c2-4753-a1e1-a08ae9ae60e7', description: 'ID del usuario devuelto en el paso 1 del login' })
+  @IsUUID()
+  @IsNotEmpty()
+  userId: string;
+
   @ApiProperty({ example: '123456', description: 'Código de 6 dígitos de tu Authenticator' })
   @IsString()
   @IsNotEmpty()
